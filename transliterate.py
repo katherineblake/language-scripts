@@ -5,7 +5,7 @@ This script takes an input .csv file and outputs an updated .csv file
 with IPA transcriptions of Buckwalter words from the input.
 
 Written by Katherine Blake (Cornell) 
-with help from Hassan Munshi (UPenn) in Fall 2021.
+with help from Hassan Munshi (UPenn) November 2021.
 
 -------------------------------------------------------------------------------
 
@@ -18,7 +18,9 @@ python transliterate.py input_file --output ./my_output.csv
 
 import argparse
 import pandas as pd
+import sys
 from ast import literal_eval
+
 
 char_dict = {
 'a' : 'a',
@@ -77,7 +79,60 @@ special_char_dict = {
 }
 
 vowel_initial = ['a','a:','i','i:','u','u:','e','e:','an','in','un']
-sun_letters = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ']
+coronals = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ']
+
+
+def liaison(pseudo_ipa):
+    '''
+    Iterate over pseudo-IPA to replace 'p' Buckwalter character,
+    which is realized as [t] before vowels at morpheme- and word-boundaries.
+    Changes 'p' to 't' word-internally and 'T' word-finally.
+    Returns updated form.
+    '''
+    ipa = ''
+    for i,char in enumerate(pseudo_ipa):
+        if char == 'p':
+        # surface [t] before vowels
+            if i == len(pseudo_ipa)-1:
+            # realization of word-final 'p' depends on onset of following word
+            # 'T' used as placeholder
+                ipa += special_char_dict[char][0]
+            else:
+                if pseudo_ipa[i+1] in vowel_initial:
+                    ipa += special_char_dict[char][1]
+                else:
+                    ipa += special_char_dict[char][2]
+        else:
+            ipa += char
+
+    return ipa
+
+
+def sun_letters(pseudo_ipa):
+    '''
+    Iterate over pseudo-IPA to assimlate /ʔal-/ definite article to
+    [ʔaC] before Sun letters (coronal consonants).
+    Returns updated form.
+    '''
+    if pseudo_ipa[:3] == 'ʔal':
+        # print(pseudo_ipa)
+        if pseudo_ipa[3] in coronals:
+            # if there is already a geminate Sun letter, delete the /l/
+            if pseudo_ipa[3] == pseudo_ipa[4]:
+                ipa = pseudo_ipa[:2] + pseudo_ipa[3:]
+            else:
+                if pseudo_ipa[4] == 'ˁ':
+                    ipa = pseudo_ipa[:2] + pseudo_ipa[3:]
+                else:
+                    ipa = pseudo_ipa[:2] + pseudo_ipa[3] + pseudo_ipa[3:]
+        else:
+            ipa = pseudo_ipa
+    else:
+        ipa = pseudo_ipa
+    
+    return ipa
+
+
 
 def translate(bw):
     '''Iterate over characters in a word in Buckwalter and 
@@ -85,7 +140,7 @@ def translate(bw):
     BW:IPA is not a 1:1 correspondence. Returns IPA string.
     '''
     
-    ## replace all 1:1 Buckwalter:IPA correspondences on first pass
+    ## FIRST PASS: replace all 1:1 Buckwalter:IPA correspondences
     first_pass = ''
     for i,char in enumerate(bw):
         try:
@@ -93,13 +148,18 @@ def translate(bw):
         except KeyError:
             first_pass += char
 
-    ## take care of 1:many correspondances on second pass
+    ## SECOND PASS: 1:many correspondances
     second_pass = ''
     for i,char in enumerate(first_pass):
         if char == 'A':
-        # 'ʔa' word-initial, 'a:' elsewhere
+        # 'ʔa' word-initial, delete before 'an' morpheme, 'a:' elsewhere
             if i == 0:
                 second_pass += special_char_dict[char][0]
+            elif len(first_pass) >= 3:
+                if first_pass[i+1:] == 'an':
+                    second_pass += ''
+                else:
+                    second_pass += special_char_dict[char][1]
             else:
                 second_pass += special_char_dict[char][1]
         elif char == '~':
@@ -139,36 +199,14 @@ def translate(bw):
         else:
             second_pass += char
 
-    ## take care of Buckwalter 'p'
-    third_pass = ''
-    for i,char in enumerate(second_pass):
-        if char == 'p':
-        # surface [t] before vowels
-            if i == len(second_pass)-1:
-            # realization of word-final 'p' depends on onset of following word
-            # 'T' used as placeholder
-                third_pass += special_char_dict[char][0]
-            else:
-                if second_pass[i+1] in vowel_initial:
-                    third_pass += special_char_dict[char][1]
-                else:
-                    third_pass += special_char_dict[char][2]
-        else:
-            third_pass += char
+    ## THIRD PASS: Buckwalter 'p' character
+    third_pass = liaison(second_pass)
 
-    ## Sun letters
-    if third_pass[:3] == 'ʔal':
-        if third_pass[3] in sun_letters:
-            if third_pass[4] == 'ˁ':
-                ipa = third_pass[:2] + third_pass[3:5] + third_pass[3:]
-            else:
-                ipa = third_pass[:2] + third_pass[3] + third_pass[3:]
-        else:
-            ipa = third_pass
-    else:
-        ipa = third_pass
+    ## FINAL PASS: Sun letters
+    ipa = sun_letters(third_pass)
 
     return ipa
+
 
 if __name__ == "__main__":
 
@@ -182,8 +220,12 @@ if __name__ == "__main__":
     # read in data from file as pandas df
     df = pd.read_csv(args.input_file)
     
+
+    trouble = ['ʔannwkj','ʔattqrj','ʔadda:rwjnjT','ʔanna:bħT','ʔarrðlT','ʔaddjna:sˁwr','ʔattwb']
+
     # iterate over data to add new column with IPA representation(s)
-    ipa_column = []
+    pform1_col = []
+    pform2_col = []
     for index, row in df.iterrows():
         bw = row["target_tokens"] #column name with Buckwalter token/s
         # in my use case, want to transliterate a list of two BW words
@@ -191,10 +233,20 @@ if __name__ == "__main__":
             bw = literal_eval(bw)
         bw1 = bw[0]
         bw2 = bw[1]
+        
         ipa1 = translate(bw1)
         ipa2 = translate(bw2)
-        ipa_column.append([ipa1,ipa2])
+
+        if ipa1 in trouble:
+            print(bw1 + '\t' + ipa1)
+        elif ipa2 in trouble:
+            print(bw2 + '\t' + ipa2)
+        
+        pform1_col.append(ipa1)
+        pform2_col.append(ipa2)
 
     # update dataframe and write to new file
-    df["ipa"] = ipa_column
+    df["pform1"] = pform1_col
+    df["pform2"] = pform2_col
+
     df.to_csv(path_or_buf=args.outpath, index=False)
