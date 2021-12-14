@@ -13,14 +13,13 @@ You may need to pip install pandas.
 
 Usage:
 python transliterate.py input_file
-python transliterate.py input_file --output ./my_output.csv
+python transliterate.py input_file --output my_path/my_filename.csv
 '''
 
 import argparse
 import pandas as pd
 import sys
 from ast import literal_eval
-
 
 char_dict = {
 'a' : 'a',
@@ -80,6 +79,8 @@ special_char_dict = {
 
 vowel_initial = ['a','a:','i','i:','u','u:','e','e:','an','in','un']
 coronals = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ']
+consonants = ['b','x','d','dˁ','ʕ','f','ɣ','h','ħ','ʒ','k','l','m','n',
+            'q','r','s','sˁ','t','tˁ','θ','v','z','ðˁ','ð','ʃ','ʔ','ˁ']
 
 
 def liaison(pseudo_ipa):
@@ -132,6 +133,36 @@ def sun_letters(pseudo_ipa):
     
     return ipa
 
+
+def vocalize(ipa,ignore=True):
+    '''
+    Iterate over IPA to vocalize inter-consonantal glides, which should be
+    vocalized. E.g., /twb/ --> /tawb/
+    Vowel identity may be incorrect, but syllable structure should be more
+    accurate. Should affect only a small subset of the data (~1%)
+
+    If ignore, return empty string; else apply less-than-perfect rule.
+
+    Returns updated form.
+    '''
+    for i in range(1,len(ipa)-1):
+        if ipa[i] == 'j':
+            if (ipa[i-1] in consonants) and (ipa[i+1] in consonants):
+                if ignore:
+                    return ''
+                else:
+                    ipa = ipa[:i] + 'ij' + ipa[i+1:]
+        elif ipa[i] == 'w':
+            if (ipa[i-1] in consonants) and (ipa[i+1] in consonants):
+                if ignore:
+                    return ''
+                else:
+                    ipa = ipa[:i] + 'aw' + ipa[i+1:]
+    
+    if (len(ipa) > 1) and (ipa[-1] == 'T') and (ipa[-2] in consonants):
+        ipa = ipa[:-1] + 'aT'
+
+    return ipa
 
 
 def translate(bw):
@@ -202,8 +233,11 @@ def translate(bw):
     ## THIRD PASS: Buckwalter 'p' character
     third_pass = liaison(second_pass)
 
-    ## FINAL PASS: Sun letters
-    ipa = sun_letters(third_pass)
+    ## FOURTH PASS: Sun letters
+    fourth_pass = sun_letters(third_pass)
+
+    ## FINAL PASS: Glide nuclei
+    ipa = vocalize(fourth_pass,ignore=False)
 
     return ipa
 
@@ -220,9 +254,6 @@ if __name__ == "__main__":
     # read in data from file as pandas df
     df = pd.read_csv(args.input_file)
     
-
-    trouble = ['ʔannwkj','ʔattqrj','ʔadda:rwjnjT','ʔanna:bħT','ʔarrðlT','ʔaddjna:sˁwr','ʔattwb']
-
     # iterate over data to add new column with IPA representation(s)
     pform1_col = []
     pform2_col = []
@@ -236,11 +267,6 @@ if __name__ == "__main__":
         
         ipa1 = translate(bw1)
         ipa2 = translate(bw2)
-
-        if ipa1 in trouble:
-            print(bw1 + '\t' + ipa1)
-        elif ipa2 in trouble:
-            print(bw2 + '\t' + ipa2)
         
         pform1_col.append(ipa1)
         pform2_col.append(ipa2)
