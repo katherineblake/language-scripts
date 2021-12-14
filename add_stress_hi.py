@@ -8,8 +8,12 @@ Kelkar, Ashok R. 1968. Studies in Hindi-Urdu I: Introduction and Word Phonology.
 Poona: Deccan College.
 (As reproduced in Gordon 2010 Stress systems paper)
 
-
+Usage:
+python add_stress_hi.py input_file
+python add_stress_hi.py input_file --outpath my_path/my_filename.csv
 '''
+
+import argparse
 import numpy as np
 import pandas as pd
 import sys
@@ -96,26 +100,37 @@ def assign_stress(pform):
     return new_pform
 
         
+if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file",  
+    help="Give path of the directory with Buckwalter data. Must be .csv. Name of column with Buckwalter assumed to be 'Buckwalter'.")
+    parser.add_argument("--outpath", default="./output.csv",
+    help="Give output filename and path. Default is ./output.csv")
+    args = parser.parse_args()
 
-df = pd.read_csv("pdataset_hi.csv",index_col=False)
+    # read in data from file as pandas df
+    df = pd.read_csv(args.input_file)
 
-new_pf1_col = []
-new_pf2_col = []
+    new_pf1_col = []
+    new_pf2_col = []
 
-for index,row in df.iterrows():
-    pform1 = row["pform1"]
-    pform2 = row["pform2"]
+    for index,row in df.iterrows():
+        pform1 = row["pform1"]
+        pform2 = row["pform2"]
 
-    new_pform1 = assign_stress(pform1)
-    new_pform2 = assign_stress(pform2)
+        # assign stress to IPA forms
+        new_pform1 = assign_stress(pform1)
+        new_pform2 = assign_stress(pform2)
 
-    new_pf1_col.append(new_pform1)
-    new_pf2_col.append(new_pform2)
+        new_pf1_col.append(new_pform1)
+        new_pf2_col.append(new_pform2)
 
-df["new_pform1"] = new_pf1_col
-df["new_pform2"] = new_pf2_col
+    # remove old IPA forms
+    df.drop(columns=["pform1","pform2"], inplace=True)
+    
+    # update dataframe with new IPA forms and write to file
+    df["pform1"] = new_pf1_col
+    df["pform2"] = new_pf2_col
 
-df.drop(columns=["pform1","pform2"], inplace=True)
-
-df.to_csv(path_or_buf="pdataset_hi_updated.csv",index=None)
+    df.to_csv(path_or_buf=args.outpath, index=False)
