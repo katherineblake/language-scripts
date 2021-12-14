@@ -1,18 +1,24 @@
-'''Automatic stress-assignment rules for Hindi.
+'''
+Automatic stress-assignment rules for Hindi.
 Stress is assigned to the heaviest syllable in a word.
 In the case of a tie, stress is assigned to the right-most,
 non-final syllable of those that are tied.
+
 Kelkar, Ashok R. 1968. Studies in Hindi-Urdu I: Introduction and Word Phonology.
 Poona: Deccan College.
-(As reproduced in some Gordon 2010 Stress systems paper)
+(As reproduced in Gordon 2010 Stress systems paper)
+
+
 '''
 import numpy as np
 import pandas as pd
 import sys
 
-'''Add stress diacritic to stressed syllable.
-'''
+
 def rewrite_pform(index,pform):
+    '''
+    Return pform with stress diacritic on stressed syllable.
+    '''
     syls = pform.split('.')
     stressed = syls[index].strip()
     stressed = 'ˈ' + stressed
@@ -23,13 +29,14 @@ def rewrite_pform(index,pform):
 
 
 vowels = ['u','ɛʱ','ɛ' 'ˈə','ɔ', 'ə̯','i','ʊ', 'õ', 'ə̃', 'ɪ̃', 'ə', 'ɪ','a','ʊ̃', 'æ', 'ᵊ']
-
-'''Weight system of Hindi:
-1. Superheavy: C V: C and C V C C = 3
-2. Heavy: C V: and C V C = 2
-3. Light: C V = 1
-'''
 def get_weight(syl):
+    '''
+    Weight system of Hindi:
+    1. Superheavy: C V: C and C V C C = 3
+    2. Heavy: C V: and C V C = 2
+    3. Light: C V = 1
+    Return 1,2,3 depending on weight of syl.
+    '''
     # long vowel
     if 'ː' in syl:
         if syl[-1] == 'ː':
@@ -56,6 +63,11 @@ def get_weight(syl):
 
 
 def assign_stress(pform):
+    '''
+    Find syllable to stress in IPA string dependent on Hindi rules.
+    Call get_weight() and rewrite_pform() as helper functions.
+    Returns updated pform with stress marked with 'ˈ'.
+    '''
     syls = pform.split('.')
     weights = []
     # loop over syllables to assign them a weight
