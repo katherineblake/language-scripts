@@ -13,7 +13,7 @@ You may need to pip install pandas.
 
 Usage:
 python transliterate.py input_file
-python transliterate.py input_file --output my_path/my_filename.csv
+python transliterate.py input_file --outpath my_path/my_filename.csv
 '''
 
 import argparse
@@ -78,7 +78,7 @@ special_char_dict = {
 }
 
 vowel_initial = ['a','a:','i','i:','u','u:','e','e:','an','in','un']
-coronals = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ']
+coronals = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ','l']
 consonants = ['b','x','d','dˁ','ʕ','f','ɣ','h','ħ','ʒ','k','l','m','n',
             'q','r','s','sˁ','t','tˁ','θ','v','z','ðˁ','ð','ʃ','ʔ','ˁ']
 
@@ -115,8 +115,8 @@ def sun_letters(pseudo_ipa):
     [ʔaC] before Sun letters (coronal consonants).
     Returns updated form.
     '''
+    og = pseudo_ipa
     if pseudo_ipa[:3] == 'ʔal':
-        # print(pseudo_ipa)
         if pseudo_ipa[3] in coronals:
             # if there is already a geminate Sun letter, delete the /l/
             if pseudo_ipa[3] == pseudo_ipa[4]:

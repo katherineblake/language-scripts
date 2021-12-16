@@ -33,8 +33,8 @@ import pandas as pd
 import re
 import sys
 
-consonants = ['b','x','d','ʕ','f','ɣ','h','ħ','ʒ','k','l','m','n',
-            'q','r','s','sˁ','t','θ','v','z','ð','ʃ','ʔ']
+consonants = ['b','x','d','ʕ','f','ɣ','h','ħ','ʒ','k','l',
+            'm','n','q','r','s','t','θ','v','z','ð','ʃ','ʔ']
 vowels = ['a','i','u','e']
 glides = ['w','j']
 def generalize(ipa):
@@ -96,7 +96,7 @@ def add_stress(syllabified):
     '''
     syllables = syllabified.split('.')
     if len(syllables) == 1: #monosyllabic
-        return syllabified
+        return 'ˈ' + syllabified
     else:
         final = syllables[-1]
         penult = syllables[-2]
