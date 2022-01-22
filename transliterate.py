@@ -4,8 +4,8 @@ Transliterate from Buckwalter to IPA transcription of Modern Standard Arabic.
 This script takes an input .csv file and outputs an updated .csv file
 with IPA transcriptions of Buckwalter words from the input.
 
-Written by Katherine Blake (Cornell) 
-with help from Hassan Munshi (UPenn) November 2021.
+Written by Katherine Blake (Cornell) with Hassan Munshi (UPenn) January 2022.
+Script developed on Buckwalter MADAMIRA output of Common Voice Arabic corpus.
 
 -------------------------------------------------------------------------------
 
@@ -21,6 +21,7 @@ import pandas as pd
 import sys
 from ast import literal_eval
 
+# 1:1 correspondences
 char_dict = {
 'a' : 'a',
 'b' : 'b',
@@ -70,19 +71,22 @@ char_dict = {
 '&' : 'ʔ'           #should be in environment of /u/
 }
 
+# 1:many correspondences
 special_char_dict = {
-'A' : ['ʔa', 'a:'], #ʔa is word-initial, a: elsewhere
+'A' : ['ʔa', 'a:', 'a'], #ʔa is word-initial, a after prefixes, a: elsewhere
 'p' : ['T','t',''], #surface [t] before vowels only
-'w' : ['w','u:'],   #long vowel in the environment u_C, elsewhere: w
-'y' : ['j','i:'],   #long vowel in the environment i_C, elsewhere: j
+'w' : ['w',':'],   #long vowel in the environment u_C, elsewhere: w
+'y' : ['j',':'],   #long vowel in the environment i_C, elsewhere: j
 }
 
+# useful lists for transcription
 vowel_initial = ['a','a:','i','i:','u','u:','e','e:','an','in','un']
 coronals = ['d','dˁ','n','r','s','sˁ','t','tˁ','θ','z','ðˁ','ð','ʃ','l']
 consonants = ['b','x','d','dˁ','ʕ','f','ɣ','h','ħ','ʒ','k','l','m','n',
             'q','r','s','sˁ','t','tˁ','θ','v','z','ðˁ','ð','ʃ','ʔ','ˁ']
 
 
+############################## HELPER FUNCTIONS ###############################
 def liaison(pseudo_ipa):
     '''
     Iterate over pseudo-IPA to replace 'p' Buckwalter character,
@@ -115,7 +119,6 @@ def sun_letters(pseudo_ipa):
     [ʔaC] before Sun letters (coronal consonants).
     Returns updated form.
     '''
-    og = pseudo_ipa
     if pseudo_ipa[:3] == 'ʔal':
         if pseudo_ipa[3] in coronals:
             # if there is already a geminate Sun letter, delete the /l/
@@ -131,6 +134,34 @@ def sun_letters(pseudo_ipa):
     else:
         ipa = pseudo_ipa
     
+    # check for CCC sequences, which are not allowed in MSA
+    if 'l' in ipa:
+        phones = list(ipa)
+        l_ixs = [i for i, x in enumerate(phones) if x =='l']
+        for l_ix in l_ixs:
+            if l_ix <= len(phones) - 3:
+                C1 = l_ix+1
+                C2 = l_ix+2
+                # check for diacritic, if so need to move index
+                if phones[C1] == 'ˁ':
+                    if C1 < len(phones) - 1:
+                        C1 += 1
+                        C2 += 1
+                    else:
+                        break
+                if phones[C2] == 'ˁ':
+                    if C2 < len(phones) - 1:
+                        C2 += 1
+                    else:
+                        break
+                # check if the next two phones after /l/ are also consonants
+                if (phones[C1] in consonants) and (phones[C2] in consonants):
+                    phones[l_ix] = '%' # replace erroneous /l/ with special char
+        # remove erroneous /l/s
+        if '%' in phones:
+            phones.remove('%')
+        ipa = ''.join(phones)
+
     return ipa
 
 
@@ -164,6 +195,7 @@ def vocalize(ipa,ignore=True):
 
     return ipa
 
+###############################################################################
 
 def translate(bw):
     '''Iterate over characters in a word in Buckwalter and 
@@ -186,6 +218,10 @@ def translate(bw):
         # 'ʔa' word-initial, delete before 'an' morpheme, 'a:' elsewhere
             if i == 0:
                 second_pass += special_char_dict[char][0]
+            elif first_pass[i-1] == 'i':
+                second_pass += special_char_dict[char][2]
+            elif first_pass[i-1] == 'a':
+                second_pass += ':'
             elif len(first_pass) >= 3:
                 if first_pass[i+1:] == 'an':
                     second_pass += ''
@@ -210,7 +246,7 @@ def translate(bw):
             else:
                 if i == len(first_pass)-1: #word-final
                     second_pass += special_char_dict[char][1]
-                elif first_pass[i+1] == '~': #geminate
+                elif (first_pass[i+1] == '~') or (first_pass[i+1] in vowel_initial): #geminate or before vowel
                         second_pass += special_char_dict[char][0]
                 else: #before consonant
                     second_pass += special_char_dict[char][1]
@@ -219,11 +255,11 @@ def translate(bw):
             if (second_pass == '') or (second_pass[-1] != 'i'):
                 second_pass += special_char_dict[char][0]
             else:
-                if i == len(first_pass)-1: #word=final
+                if i == len(first_pass)-1: #word-final
                     second_pass += special_char_dict[char][1]
                 elif first_pass[i+1] == '~': #geminate
                     second_pass += special_char_dict[char][0]
-                elif first_pass[i+1] == 'A': #before long vowel
+                elif (first_pass[i+1] == 'A') or (first_pass[i+1] in vowel_initial): #before vowel
                     second_pass += special_char_dict[char][0]
                 else: #before consonant
                     second_pass += special_char_dict[char][1]
@@ -264,7 +300,7 @@ if __name__ == "__main__":
             bw = literal_eval(bw)
         bw1 = bw[0]
         bw2 = bw[1]
-        
+
         ipa1 = translate(bw1)
         ipa2 = translate(bw2)
         

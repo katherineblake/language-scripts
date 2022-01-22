@@ -33,6 +33,8 @@ import pandas as pd
 import re
 import sys
 
+from ast import literal_eval
+
 consonants = ['b','x','d','ʕ','f','ɣ','h','ħ','ʒ','k','l',
             'm','n','q','r','s','t','θ','v','z','ð','ʃ','ʔ']
 vowels = ['a','i','u','e']
@@ -42,6 +44,7 @@ def generalize(ipa):
     Replace IPA characters with C, V, or G for consonant, vowel, glide.
     Returns syllabify() of generalized string.
     '''
+    og = ipa
     if type(ipa) != str:
         return ''
 
@@ -55,6 +58,13 @@ def generalize(ipa):
     ipa = ipa.replace(':','V') #long vowels
     CV_form = ipa.replace('ˁ','') #pharyngealization diacritic
 
+    # if 'CCC' in CV_form:
+    #     if 'V' in CV_form:
+    #         print(bw + ',' + og + ',' + CV_form + ',' + ar)
+    
+    # if 'VVV' in CV_form:
+    #     print(bw + ',' + og + ',' + CV_form + ',' + ar)
+    
     # add syllable boundaries
     return(syllabify(CV_form))
 
@@ -123,7 +133,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file",  
-    help="Give path of the directory with Buckwalter data. Must be .csv. Name of column with Buckwalter assumed to be 'Buckwalter'.")
+    help="Give path of the directory with IPA data. Must be .csv. Name of column with IPA assumed to be 'IPA'.")
     parser.add_argument("--outpath", default="./output.csv",
     help="Give output filename and path. Default is ./output.csv")
     args = parser.parse_args()
@@ -136,6 +146,11 @@ if __name__ == "__main__":
     for index,row in df.iterrows():
         pform1 = row["pform1"]
         pform2 = row["pform2"]
+
+        # bw1 = literal_eval(row["target_tokens"])[0]
+        # bw2 = literal_eval(row["target_tokens"])[1]
+
+        # ar = row["sentence"]
 
         # get CV representation with stress and syllable boundaries
         CV_form1 = generalize(pform1)
