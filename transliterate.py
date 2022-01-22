@@ -291,24 +291,15 @@ if __name__ == "__main__":
     df = pd.read_csv(args.input_file)
     
     # iterate over data to add new column with IPA representation(s)
-    pform1_col = []
-    pform2_col = []
+    ipa_col = []
     for index, row in df.iterrows():
-        bw = row["target_tokens"] #column name with Buckwalter token/s
-        # in my use case, want to transliterate a list of two BW words
-        if type(bw) != list:
-            bw = literal_eval(bw)
-        bw1 = bw[0]
-        bw2 = bw[1]
+        bw = row["Buckwalter"] #column name with Buckwalter token
 
-        ipa1 = translate(bw1)
-        ipa2 = translate(bw2)
-        
-        pform1_col.append(ipa1)
-        pform2_col.append(ipa2)
+        # get IPA transcription of Buckwalter
+        ipa = translate(bw)
+        ipa_col.append(ipa)
 
     # update dataframe and write to new file
-    df["pform1"] = pform1_col
-    df["pform2"] = pform2_col
+    df["IPA"] = ipa_col
 
     df.to_csv(path_or_buf=args.outpath, index=False)
