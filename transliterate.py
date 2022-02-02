@@ -3,6 +3,8 @@ Transliterate from Buckwalter to IPA transcription of Modern Standard Arabic.
 
 This script takes an input .csv file and outputs an updated .csv file
 with IPA transcriptions of Buckwalter words from the input.
+Buckwalter data is expected to be one word per row, in a column "Buckwalter";
+transcription will be added in a new column "IPA". 
 
 Written by Katherine Blake (Cornell) with Hassan Munshi (UPenn) January 2022.
 Script developed on Buckwalter MADAMIRA output of Common Voice Arabic corpus.
